@@ -4,6 +4,10 @@ Parameters:
     Description: choose existing key pair
     Type: AWS::EC2::KeyPair::KeyName
     Default: SSHKey
+  WebhookURL:
+    Description: slack webhook_url
+    Type: String
+    Default: webhookurl
   SpotMaxPrice:
     Description: maxprice of spotinstance
     Type: String
@@ -338,7 +342,7 @@ Resources:
       Timeout: "180"
       Environment:
         Variables:
-          WEBHOOK_URL: "https://hooks.slack.com/services/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"   
+          WEBHOOK_URL: !Ref WebhookURL
 
   LambdaFunctionInstanceStateChange:
     Type: "AWS::Lambda::Function"
@@ -422,7 +426,7 @@ Resources:
       Timeout: "180"
       Environment:
         Variables:
-          WEBHOOK_URL: "https://hooks.slack.com/services/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"
+          WEBHOOK_URL: !Ref WebhookURL
           MAX_PRICE: !Ref SpotMaxPrice
           MAX_MINUTES: !Ref DurationMinutes
           INSTANCE_TYPE: !Ref Ec2InstanceType
