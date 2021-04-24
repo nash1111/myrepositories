@@ -1,0 +1,10 @@
+image: python:3.8
+
+before_script:
+  - pip install pipenv
+  - pipenv install --dev
+
+test:
+  script:
+    - pipenv run pytest
+    - pipenv run lint

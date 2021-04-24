@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[scripts]
+lint = "flake8 --config ./setup.cfg --show-source src/"
+format-check = "autopep8 --global-config ./setup.cfg --exit-code -dvr src/"
+format = "autopep8 --global-config ./setup.cfg -ivr src/"
+
+[packages]
+numpy = "*"
+pytest = "*"
+flake8 = "*"
+autopep8 = "*"
+pandas = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"

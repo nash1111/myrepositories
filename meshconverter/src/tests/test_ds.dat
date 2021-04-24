@@ -1,0 +1,229 @@
+/batch
+*get,_wallstrt,active,,time,wall
+! ANSYS input file written by Workbench version 18.0 RELEASE
+! File used for geometry attach: D:\ansys\meshtest\meshtest_files\dp0\SYS\DM\SYS.scdoc
+/title,meshtest--____ (A5)
+*DIM,_wb_ProjectScratch_dir,string,248
+_wb_ProjectScratch_dir(1) = 'D:\ansys\meshtest\_ProjectScratch\Scr5F65\'
+*DIM,_wb_SolverFiles_dir,string,248
+_wb_SolverFiles_dir(1) = 'D:\ansys\meshtest\meshtest_files\dp0\SYS\MECH\'
+*DIM,_wb_userfiles_dir,string,248
+_wb_userfiles_dir(1) = 'D:\ansys\meshtest\meshtest_files\user_files\'
+/com,--- Data in consistent MKS units. See Solving Units in the help system for more information.
+/units,MKS
+/nopr
+/wb,file,start              !  signify a WB generated input file
+/prep7
+! Turn off shape checking because checks already performed inside WB mesher.
+! See help system for more information.
+SHPP,OFF,,NOWARN
+/nolist
+etcon,set             ! allow ANSYS to choose best KEYOP's for 180x elements
+/com,*********** Nodes for the whole assembly ***********
+nblock,3,,29
+(1i9,3e20.9e3)
+        1    5.000000000E-001    5.000000000E-001    5.000000000E-001
+        2    5.000000000E-001    0.000000000E+000    5.000000000E-001
+        3    1.000000000E+000    0.000000000E+000    1.000000000E+000
+        4    5.000000000E-001    0.000000000E+000    1.000000000E+000
+        5    0.000000000E+000    0.000000000E+000    1.000000000E+000
+        6    0.000000000E+000    0.000000000E+000    5.000000000E-001
+        7    0.000000000E+000    0.000000000E+000    0.000000000E+000
+        8    1.000000000E+000    0.000000000E+000    5.000000000E-001
+        9    5.000000000E-001    0.000000000E+000    0.000000000E+000
+       10    1.000000000E+000    0.000000000E+000    0.000000000E+000
+       11    5.000000000E-001    1.000000000E+000    5.000000000E-001
+       12    1.000000000E+000    1.000000000E+000    1.000000000E+000
+       13    5.000000000E-001    1.000000000E+000    1.000000000E+000
+       14    0.000000000E+000    1.000000000E+000    1.000000000E+000
+       15    0.000000000E+000    1.000000000E+000    5.000000000E-001
+       16    0.000000000E+000    1.000000000E+000    0.000000000E+000
+       17    1.000000000E+000    1.000000000E+000    5.000000000E-001
+       18    1.000000000E+000    1.000000000E+000    0.000000000E+000
+       19    5.000000000E-001    1.000000000E+000    0.000000000E+000
+       20    1.000000000E+000    5.000000000E-001    5.000000000E-001
+       21    1.000000000E+000    5.000000000E-001    0.000000000E+000
+       22    1.000000000E+000    5.000000000E-001    1.000000000E+000
+       23    5.000000000E-001    5.000000000E-001    0.000000000E+000
+       24    0.000000000E+000    5.000000000E-001    0.000000000E+000
+       25    0.000000000E+000    5.000000000E-001    5.000000000E-001
+       26    0.000000000E+000    5.000000000E-001    1.000000000E+000
+       27    5.000000000E-001    5.000000000E-001    1.000000000E+000
+-1
+/wb,elem,start            !  set before creation of elements
+/com,*********** Elements for Body 1 "SYS\Solid" ***********
+et,1,185
+eblock,19,solid,,8
+(19i9)
+        1        1        1        1        0        0        0        0        8        0        1        1       11       19       23       25       15       16       24
+        1        1        1        1        0        0        0        0        8        0        2        1       11       17       20       23       19       18       21
+        1        1        1        1        0        0        0        0        8        0        3        1       23        9        2       25       24        7        6
+        1        1        1        1        0        0        0        0        8        0        4        1       20        8        2       23       21       10        9
+        1        1        1        1        0        0        0        0        8        0        5        1       20       17       11       27       22       12       13
+        1        1        1        1        0        0        0        0        8        0        6        1       11       15       25       27       13       14       26
+        1        1        1        1        0        0        0        0        8        0        7        1        2        8       20       27        4        3       22
+        1        1        1        1        0        0        0        0        8        0        8        1       25        6        2       27       26        5        4
+-1
+!Material Id = {B345139E-AA5F-4180-8985-1011CE0EA2AE}
+/wb,elem,end               !  done creating elements
+/com,*********** Send User Defined Coordinate System(s) ***********
+csys,0
+toffst,273.15,  ! Temperature offset from absolute zero
+/com,*********** Set Reference Temperature ***********
+tref,22.
+/wb,mat,start              !  starting to send materials
+/com,*********** Send Materials ***********
+MP,DENS,1,7850,	! kg m^-3
+MP,ALPX,1,1.2e-05,	! C^-1
+MP,C,1,434,	! J kg^-1 C^-1
+MP,KXX,1,60.5,	! W m^-1 C^-1
+MP,RSVX,1,1.7e-07,	! kg m^3 A^-2 s^-3
+MP,EX,1,200000000000,	! Pa
+MP,NUXY,1,0.3,
+MP,MURX,1,10000,
+
+/wb,mat,end                !  done sending materials
+!************************* Model Summary ********************
+!SYS\Solid,	ç\ë¢ópç|,	matid,	1
+!************************* End Model Summary ********************
+! get the diagonal of the bounding box. Needed later for other things
+*get,_xmin,node,,mnloc,x
+*get,_ymin,node,,mnloc,y
+*get,_zmin,node,,mnloc,z
+*get,_xmax,node,,mxloc,x
+*get,_ymax,node,,mxloc,y
+*get,_zmax,node,,mxloc,z
+_ASMDIAG=(_xmax-_xmin)*(_xmax-_xmin)+(_ymax-_ymin)*(_ymax-_ymin)+(_zmax-_zmin)*(_zmax-_zmin)
+_ASMDIAG=SQRT(_ASMDIAG)
+/wb,contact,start          !  starting to send contact
+/wb,contact,end            !  done creating contacts
+/golist
+/wb,load,start             !  starting to send loads
+/com,*********** Fixed Supports ***********
+CMBLOCK,_FIXEDSU,NODE,        9
+(8i10)
+         2         3         4         5         6         7         8         9
+        10
+cmsel,s,_FIXEDSU
+d,all,all
+nsel,all
+/com,*********** Create Displacement Tables and Functions ******
+
+*DIM,_loadvari32yp,TABLE,2,1,1,TIME,
+! Time values
+_loadvari32yp(1,0,1) = 0.
+_loadvari32yp(2,0,1) = 1.
+! Load values
+_loadvari32yp(1,1,1) = 0.
+_loadvari32yp(2,1,1) = 1.e-003
+
+
+*DIM,_loadvari32yn,TABLE,2,1,1,TIME,
+! Time values
+_loadvari32yn(1,0,1) = 0.
+_loadvari32yn(2,0,1) = 1.
+! Load values
+_loadvari32yn(1,1,1) = -0.
+_loadvari32yn(2,1,1) = -1.e-003
+
+/gst,on,on
+fini
+*get,_numnode,node,0,count
+*get,_numelem,elem,0,count
+*get, _MAXELEMNUM, elem, 0, NUM, MAX
+*get, _MAXNODENUM, node, 0, NUM, MAX
+*get, _MAXELEMTYPE, etyp, 0, NUM, MAX
+*get, _MAXREALCONST, real, 0, NUM, MAX
+/go
+/wb,load,end               !  done creating loads
+/com,--- Number of total nodes = %_numnode%
+/com,--- Number of contact elements = 0
+/com,--- Number of spring elements = 0
+/com,--- Number of bearing elements = 0
+/com,--- Number of solid elements = 8
+/com,--- Number of total elements = %_numelem%
+*get,_wallbsol,active,,time,wall
+/com,****************************************************************************
+/com,*************************    SOLUTION       ********************************
+/com,****************************************************************************
+/solu
+antype,0                   ! static analysis
+eqsl,sparse,,,,,1
+cntr,print,1               ! print out contact info and also make no initial contact an error
+dmpoption,emat,no             ! Don't combine emat file for DANSYS
+dmpoption,esav,no             ! Don't combine esav file for DANSYS
+nldiag,cont,iter           ! print out contact info each equilibrium iteration
+rescontrol,,none                 ! Do not keep any restart files
+/com,****************************************************
+/com,******************* SOLVE FOR LS 1 OF 1 ****************
+/com,*** Set Displacements ***
+CMBLOCK,_CM32UY_YP,NODE,        9
+(8i10)
+        11        12        13        14        15        16        17        18
+        19
+cmsel,s,_CM32UY_YP
+d,all,uy,%_loadvari32yp%
+nsel,all
+
+/com,*** Component For All Non-Zero UY Displacements ***
+cmsel,s,_CM32uy_yp
+cm,_DISPNONZEROUY,NODE
+nsel,all
+
+/nopr
+/gopr
+nsub,1,1,1
+time,1.
+outres,erase
+outres,all,none
+outres,nsol,all
+outres,rsol,all
+outres,strs,all
+outres,epel,all
+outres,eppl,all
+stabilize,off                   ! Stabilization turned OFF by user
+! ****** Begin Command Snippet ******
+!   Commands inserted into this file will be executed just prior to the ANSYS SOLVE command.
+!   These commands may supersede command settings set by Workbench.
+
+!   Active UNIT system in Workbench when this object was created:  Metric (m, kg, N, s, V, A)
+!   NOTE:  Any data that requires units (such as mass) is assumed to be in the consistent solver unit system.
+!                See Solving Units in the help system for more information.
+
+
+NLIST,ALL, , ,XYZ,NODE,NODE,NODE
+elist,all,,,0,0 
+! ****** End   Command Snippet ******
+! *********** WB SOLVE COMMAND ***********
+! check interactive state
+*get,ANSINTER_,active,,int
+*if,ANSINTER_,ne,0,then
+/eof
+*endif
+solve
+/com *************** Write FE CONNECTORS ********* 
+CEWRITE,file,ce,,INTE
+/com,****************************************************
+/com,*************** FINISHED SOLVE FOR LS 1 *************
+*set,_DS_PROGRESS          ! turn off progress updates to avoid virus scanning bug
+*get,_wallasol,active,,time,wall
+/nopr
+*get,_numnode,node,0,count
+*get,_numelem,elem,0,count
+*get, _MAXELEMNUM, elem, 0, NUM, MAX
+*get, _MAXNODENUM, node, 0, NUM, MAX,,,INTERNAL
+*get, _MAXELEMTYPE, etyp, 0, NUM, MAX
+*get, _MAXREALCONST, real, 0, NUM, MAX
+/gopr
+/post1
+xmlo,ENCODING,ISO-8859-1
+xmlo,parm
+/xml,parm,xml
+fini
+/gopr
+*get,_walldone,active,,time,wall
+_preptime=(_wallbsol-_wallstrt)*3600
+_solvtime=(_wallasol-_wallbsol)*3600
+_posttime=(_walldone-_wallasol)*3600
+_totaltim=(_walldone-_wallstrt)*3600
+/wb,file,end               ! done with WB generated input
