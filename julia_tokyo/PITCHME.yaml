@@ -1,0 +1,16 @@
+# Layout
+layout : center-left
+
+# Look-and-Feel
+#logo : assets/img/desk.jpg
+theme : night
+theme-override : assets/css/PITCHME.css
+highlight : ir-black
+
+# Behavior
+transition : none
+published : true
+
+# Plugins
+charts : true
+mathjax : TeX-MML-AM_HTMLorMML-full
