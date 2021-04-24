@@ -1,0 +1,494 @@
+---
+Parameters:
+  Ec2InstanceKryptonKeyName:
+    Description: choose existing key pair
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: SSHKey
+  SpotMaxPrice:
+    Description: maxprice of spotinstance
+    Type: String
+    Default: "1"
+  DurationMinutes:
+    Description: block duration minutes of spot instance, multiple of 60
+    Type: Number
+  Ec2InstanceType:
+    Description: EC2 InstanceType
+    Type: String
+    Default: t2.micro
+  Ec2ImageId:
+    Description: AMI ID
+    Type: String
+    Default: ami-0ce107ae7af2e92b5
+  SlackChannelId:
+    Description: slackchannel id
+    Type: String
+    Default: "C01FYM4MDDG"
+  SlackWorkspaceId:
+    Description: slack workspace id
+    Type: String
+    Default: "TLM757A2W"
+  SnsTopicArns:
+    Description: sns topic arns
+    Type: String
+    Default: "arn:aws:sns:ap-northeast-1:397676318575:sns-topic"
+  SrcS3BucketName:
+    Description: src s3 bucket
+    Type: String
+    Default: "mlops-src-bucket"
+  ResultS3BucketName:
+    Description: result s3 bucket
+    Type: String
+    Default: "mlops-result-bucket"
+
+Conditions:
+  IsBlockDurationMinutesEnable: !Not [ !Equals [ !Ref DurationMinutes, -1 ] ]
+
+Resources:
+  Ec2InstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        SecurityGroups:
+        - !Ref SSHSecurityGroup
+        - !Ref ServerSecurityGroup
+        KeyName: !Ref Ec2InstanceKryptonKeyName
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash -xe
+            date > /tmp/run.log
+            echo "#!/bin/bash
+            if [ ! -d /home/ec2-user/src ] && [ ! -d /home/ec2-user/data ]; then
+              mkdir -p /home/ec2-user/src /home/ec2-user/data
+              aws s3 cp --recursive s3://mlops-src-bucket/hierarchical_multitask/ /home/ec2-user/src
+              aws s3 cp s3://mlops-src-bucket/data.zip /home/ec2-user/data
+            fi
+            cd /home/ec2-user/key
+            chmod a+x /home/ec2-user/key/register_key.sh
+            echo "[Unit]
+            Description=exec by systemd
+ 
+            [Service]
+            Restart=on-failure
+            Type=simple
+            ExecStart=/home/ec2-user/install.sh start
+ 
+            [Install]
+            WantedBy=default.target" > /etc/systemd/system/test.service
+            chmod 644 /etc/systemd/system/test.service
+            chmod 755 /home/ec2-user/install.sh
+            systemctl daemon-reload
+            systemctl enable test
+            systemctl start test
+            echo start
+            yum update -y
+            yum install jq awslogs -y
+            chkconfig awslogs on
+            yum install -y docker
+            systemctl start docker
+            usermod -a -G docker ec2-user
+            mkdir -p result
+            # run scripts
+            # python3 hoge.py
+            # result の転送
+            aws s3 cp result s3://mlops-result-bucket/ --recursive
+        InstanceInitiatedShutdownBehavior: terminate
+        IamInstanceProfile:
+          Arn: !GetAtt 'Ec2IAMProfile.Arn'
+        ImageId: !Ref 'Ec2ImageId'
+        Monitoring:
+          Enabled: false
+        CreditSpecification:
+          CpuCredits: standard
+        InstanceType: !Ref 'Ec2InstanceType'
+        InstanceMarketOptions:
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+            MaxPrice: !Ref SpotMaxPrice
+            BlockDurationMinutes:
+              Fn::If:
+              - IsBlockDurationMinutesEnable
+              - Ref: DurationMinutes
+              - Ref: AWS::NoValue
+          MarketType: spot
+        BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp2
+            DeleteOnTermination: false
+        - DeviceName: /dev/xvdf
+          Ebs:
+            VolumeSize: 1
+            VolumeType: gp2
+            DeleteOnTermination: false
+  S3AccessProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: "EC2InstanceProfile"
+      Path: /
+      Roles:
+      - !Ref S3AccessRole
+  
+  S3AccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Principal:
+              Service: ec2.amazonaws.com
+            Effect: Allow
+            Sid: ''
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action: 
+                  - 's3:*'
+                Resource: '*'
+                Effect: Allow
+          PolicyName: EC2ToS3Policy
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 'Ec2InstanceLaunchTemplate'
+        Version: !GetAtt 'Ec2InstanceLaunchTemplate.LatestVersionNumber'
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+        - !Ref ServerSecurityGroup
+      KeyName: !Ref Ec2InstanceKryptonKeyName
+    DependsOn: Ec2InstanceLaunchTemplate
+  SrcS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref SrcS3BucketName
+  ResultS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: Private
+      BucketName: !Ref ResultS3BucketName
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref MyInstance
+    DependsOn: MyInstance
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+  ServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow connections from specified CIDR ranges
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 192.168.1.1/32
+  Ec2IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+      Path: /
+      Policies: !Ref 'AWS::NoValue'
+      RoleName: !Ref 'AWS::NoValue'
+  Ec2RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: Ec2RolePolicies
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:List*
+          Resource:
+          - '*'
+        - Effect: Allow
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          - logs:DescribeLogStreams
+          Resource:
+          - arn:aws:logs:*:*:*
+      Roles:
+      - !Ref 'Ec2IAMRole'
+  Ec2IAMProfile:
+    Type: AWS::IAM::InstanceProfile
+    DependsOn: Ec2IAMRole
+    Properties:
+      Path: /
+      Roles:
+      - !Ref 'Ec2IAMRole'
+  CFnNotification:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Properties:
+      LoggingLevel: "INFO"
+      ConfigurationName: "notification-config"
+      IamRoleArn: "arn:aws:iam::397676318575:role/aws-service-role/management.chatbot.amazonaws.com/AWSServiceRoleForAWSChatbot"
+      SlackChannelId: !Ref SlackChannelId
+      SlackWorkspaceId: !Ref SlackWorkspaceId
+      SnsTopicArns: 
+        - !Ref SnsTopicArns
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+# Create Lambda Function
+  LambdaFunctionSpotInstance:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.lambda_handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: !Sub |
+          import json
+          import os
+          import logging
+
+          from urllib.request import Request, urlopen
+          from urllib.error import URLError, HTTPError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          def lambda_handler(event, context):
+            webhook_url = os.environ['WEBHOOK_URL']
+            instanceAction = event['detail']['instance-action']
+            instanceId = event['detail']['instance-id']
+            message = 'EC2 SpotInstance message'
+            slack_message = {
+              'username': 'EC2 SpotInterruption Notification',
+              'icon_emoji': ':sunny:',
+              'text': message,
+              'attachments': [
+                {
+                  'fallback': 'AWS Health Event Description.',
+                  'color': 'danger',
+                  'title': 'event',
+                  'title_link': 'https://phd.aws.amazon.com/phd/home',
+                  'fields': [
+                    {
+                      'title': 'Spot Instance Interruption Notification',
+                      'value': instanceAction,
+                      'short': True
+                      },
+                      {
+                      'title': 'instanceID',
+                      'value': instanceId,
+                      'short': True
+                      }
+                    ]
+                  }
+                ]
+              }
+
+            req = Request(webhook_url, json.dumps(slack_message).encode('utf-8'))
+            try:
+              response = urlopen(req)
+              response.read()
+              logger.info("Message posted.")
+            except HTTPError as e:
+              logger.error("Request failed: %d %s", e.code, e.reason)
+            except URLError as e:
+              logger.error("Server connection failed: %s", e.reason)
+      Runtime: "python3.6"
+      MemorySize: "128"
+      Timeout: "180"
+      Environment:
+        Variables:
+          WEBHOOK_URL: "https://hooks.slack.com/services/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"   
+
+  LambdaFunctionInstanceStateChange:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Handler: "index.lambda_handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: !Sub |
+          import json
+          import os
+          import logging
+          from urllib.request import Request, urlopen
+          from urllib.error import URLError, HTTPError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+            webhook_url = os.environ['WEBHOOK_URL']
+            max_price = os.environ['MAX_PRICE']
+            max_minutes = os.environ['MAX_MINUTES']
+            instancetype = os.environ['INSTANCE_TYPE']
+            message = 'EC2 InstanceState-change message'
+            slack_message = {
+              'username': 'EC2 InstanceState-change Notification',
+              'icon_emoji': ':rain_cloud:',
+              'text': message,
+              'attachments': [
+                {
+                  'fallback': 'AWS Health Event Description.',
+                  'color': 'warning',
+                  'title': 'event',
+                  'title_link': 'https://phd.aws.amazon.com/phd/home',
+                  'fields': [
+                    {
+                      'title': 'Account ID',
+                      'value': event['account'],
+                      'short': True
+                    },
+                    {
+                      'title': 'State',
+                      'value': event['detail']['state'],
+                      'short': True
+                    },
+                    {
+                      'title': 'Instance ID',
+                      'value': event['detail']['instance-id'],
+                      'short': True
+                    },
+                    {
+                      'title': 'instance-type',
+                      'value': instancetype,
+                      'short': True
+                    },
+                    {
+                      'title': 'max-minutes',
+                      'value': max_minutes,
+                      'short': True
+                    },
+                    {
+                      'title': 'max-price',
+                      'value': max_price,
+                      'short': True
+                    }
+                  ]
+                }
+              ]
+            }
+
+            req = Request(webhook_url, json.dumps(slack_message).encode('utf-8'))
+            try:
+              response = urlopen(req)
+              response.read()
+              logger.info("Message posted.")
+            except HTTPError as e:
+              logger.error("Request failed: %d %s", e.code, e.reason)
+            except URLError as e:
+              logger.error("Server connection failed: %s", e.reason)
+      Runtime: "python3.6"
+      MemorySize: "128"
+      Timeout: "180"
+      Environment:
+        Variables:
+          WEBHOOK_URL: "https://hooks.slack.com/services/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"
+          MAX_PRICE: !Ref SpotMaxPrice
+          MAX_MINUTES: !Ref DurationMinutes
+          INSTANCE_TYPE: !Ref Ec2InstanceType
+
+
+# Create CloudWatch Events Rule for SpotInstance
+  EventRuleSpotInstanceNotification:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Description: "スポットインスタンス情報をSlackに通知する"
+      EventPattern:
+        detail-type:
+        - EC2 Spot Instance Interruption Warning
+        source:
+        - aws.ec2
+      Name: AWSSpotInstanceInterruptingToSlack
+      State: "ENABLED"
+      Targets:
+        - 
+          Arn: !GetAtt LambdaFunctionSpotInstance.Arn
+          Id: "TargetFunctionV1"
+
+  EventRuleInstanceStateChangeNotification:
+    Type: "AWS::Events::Rule"
+    Properties:
+      Description: "スポットインスタンス変更状態をSlackに通知する"
+      EventPattern:
+        detail-type:
+        - EC2 Instance State-change Notification
+        source:
+        - aws.ec2
+      Name: AWSInstanceState-changeNotificationToSlack
+      State: "ENABLED"
+      Targets:
+        - 
+          Arn: !GetAtt LambdaFunctionInstanceStateChange.Arn
+          Id: "TargetFunctionV2"
+
+# Create Invoke Lambda Permission
+  PermissionForEventsToInvokeLambda:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !Ref LambdaFunctionSpotInstance
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventRuleSpotInstanceNotification.Arn
+  PermissionForEventsToInvokeLambdaStateChange:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !Ref LambdaFunctionInstanceStateChange
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt EventRuleInstanceStateChangeNotification.Arn
+Outputs:
+  InstanceID:
+    Description: Instance ID
+    Value: !Ref MyInstance
+  ElasticIP:
+    Description: Elastic IP
+    Value: !Ref MyEIP
+  MaxPrice:
+    Description: maxprice of spotinstance
+    Value: !Ref SpotMaxPrice
+  BlockDurationMinutes:
+    Description: duration minutes of spotinstance
+    Value: !Ref DurationMinutes
+  InstanceType:
+    Description: instance type
+    Value: !Ref Ec2InstanceType
